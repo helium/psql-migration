@@ -10,12 +10,12 @@ This is inspired by the similarly named [pgsql_migration](https://github.com/art
 Build
 -----
 
-    $ ./rebar3 escriptize
+    $ Make
 
 Run
 ---
 
-The script will look for a `DATABASE_URL` environment variable for connectivity details a running Postgres and suports  `.env` file to hold that variable.
+The script will look for a `DATABASE_URL` environment variable for connectivity details a running Postgres and supports  `.env` file to hold that variable.
 
 
 Run the script with:

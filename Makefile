@@ -10,3 +10,5 @@ typecheck:
 
 clean:
 	$(REBAR) clean
+
+ci: compile

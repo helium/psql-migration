@@ -1,6 +1,8 @@
 psql_migration
 =====
 
+[![Build status](https://badge.buildkite.com/2a17b5561e84e0ad2ce19cac2d079d5ab8c59d647389de3287.svg)](https://buildkite.com/helium/psql-migration)
+
 An escript to help with Postgres migrations.
 
 This is inspired by the similarly named [pgsql_migration](https://github.com/artemeff/pgsql_migration) and the excellent tooling offered by [diesel](http://diesel.rs).

@@ -3,7 +3,7 @@
 REBAR=./rebar3
 
 compile:
-	$(REBAR) escriptize
+	$(REBAR) compile
 
 typecheck:
 	$(REBAR) do dialyzer,xref

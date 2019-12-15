@@ -1,0 +1,16 @@
+{"1.1.0",
+[{<<"envloader">>,
+  {git,"https://github.com/nuex/envloader.git",
+       {ref,"27a97e04f35c554995467b9236d8ae0188d468c7"}},
+  0},
+ {<<"epgsql">>,{pkg,<<"epgsql">>,<<"4.3.0">>},0},
+ {<<"eql">>,
+  {git,"git://github.com/artemeff/eql.git",
+       {ref,"a6727a3f878bfdd06648b7a886cbd2c0630db172"}},
+  0},
+ {<<"getopt">>,{pkg,<<"getopt">>,<<"1.0.1">>},0}]}.
+[
+{pkg_hash,[
+ {<<"epgsql">>, <<"26D9CF04D74773D1DC4DA24AD39E926B34E107232591FE1866EFDFBC0A098396">>},
+ {<<"getopt">>, <<"C73A9FA687B217F2FF79F68A3B637711BB1936E712B521D8CE466B29CBF7808A">>}]}
+].

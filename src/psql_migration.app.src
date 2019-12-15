@@ -1,0 +1,18 @@
+{application, psql_migration,
+ [{description, "A script to manage Postgres migrations"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications,
+   [kernel,
+    stdlib,
+    getopt,
+    epgsql,
+    eql,
+    envloader
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {licenses, ["Apache 2.0"]},
+  {links, []}
+ ]}.

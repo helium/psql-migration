@@ -103,17 +103,23 @@ handle_command({ok, {_, _}}) ->
 open_connection(Args) ->
     envloader:load(dot_env(Args)),
     URL = os:getenv("DATABASE_URL"),
-    ParseOpts = [{scheme_defaults, [{postgres, 5432}]}],
+    ParseOpts = [{scheme_defaults, [{postgres, 5432}, {postgresql, 5432}]}],
     case http_uri:parse(URL, ParseOpts) of
         {error, Error} ->
             {error, Error};
-        {ok, {postgres, UserPass, Host, Port, Database, _}} ->
-            [User, Pass] = string:split(UserPass, ":"),
+        {ok, {_, UserPass, Host, Port, Database, _}} ->
+            {User, Pass} = case string:split(UserPass, ":") of
+                               [[]] -> {"postgres", ""};
+                               [U] -> {U, ""};
+                               [[], []] -> {"postgres", ""};
+                               [U, P] ->  {U, P}
+                           end,
             OpenOpts = #{ port => Port,
+                          username => User,
+                          password => Pass,
+                          host =>Host,
                           database => string:slice(Database, 1)},
-            epgsql:connect(Host, User, Pass, OpenOpts);
-        {ok, {Schema, _, _, _, _, _}} ->
-            {error, {unsupported_schema, Schema}}
+            epgsql:connect(OpenOpts)
     end.
 
 

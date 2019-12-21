@@ -1,7 +1,7 @@
 -module(psql_migration).
 
 %% API exports
--export([main/1]).
+-export([main/1, open_connection/0, open_connection/1]).
 
 %%====================================================================
 %% API functions
@@ -100,8 +100,8 @@ handle_command({ok, {_, _}}) ->
 
 %% Utils
 
-open_connection(Args) ->
-    envloader:load(dot_env(Args)),
+-spec open_connection() -> {ok, epgsql:connection()} | {error, term()}.
+open_connection() ->
     URL = os:getenv("DATABASE_URL"),
     ParseOpts = [{scheme_defaults, [{postgres, 5432}, {postgresql, 5432}]}],
     case http_uri:parse(URL, ParseOpts) of
@@ -122,6 +122,9 @@ open_connection(Args) ->
             epgsql:connect(OpenOpts)
     end.
 
+open_connection(Args) ->
+    envloader:load(dot_env(Args)),
+    open_connection().
 
 target_dir(Args) ->
     case lists:keyfind(dir, 1, Args) of

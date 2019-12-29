@@ -95,11 +95,15 @@ handle_command({ok, {Args, ["reset"]}}) ->
         error ->
             handle_command_result({error, "No database to reset~n"});
         {Database, Opts1} ->
-            ok = with_connection(Opts1,
+            case with_connection(Opts1,
                                  fun(Conn) ->
                                          if_ok(epgsql:squery(Conn, "drop database if exists " ++ Database))
-                                 end),
-            handle_command({ok, {Args, ["setup"]}})
+                                 end) of
+                ok ->
+                    handle_command({ok, {Args, ["setup"]}});
+                Other ->
+                    handle_command_result(Other)
+            end
     end;
 handle_command({ok, {Args, ["setup"]}}) ->
     {ok, Opts} = connection_opts(Args),

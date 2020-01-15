@@ -256,7 +256,7 @@ available_migrations(Args) ->
     Dir = target_dir(Args),
     Files = filelib:wildcard(filename:join(Dir, "*.sql")),
     lists:map(fun(Filename) ->
-                      {ok, Migs} = eql:compile(filename:join([Dir, Filename])),
+                      {ok, Migs} = eql:compile(Filename),
                       {filename:rootname(Filename), Migs}
               end, lists:usort(Files)).
 

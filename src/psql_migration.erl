@@ -1,7 +1,7 @@
 -module(psql_migration).
 
 %% API exports
--export([main/1, open_connection/1, connection_opts/1]).
+-export([main/1, open_connection/1, connection_opts/1, connection_opts/2]).
 
 %%====================================================================
 %% API functions
@@ -157,8 +157,11 @@ with_connection(Args, Fun) ->
     end.
 
 connection_opts(Args) ->
+    connection_opts(Args, "DATABASE_URL").
+
+connection_opts(Args, URLName) ->
     envloader:load(dot_env(Args)),
-    URL = os:getenv("DATABASE_URL"),
+    URL = os:getenv(URLName),
     ParseOpts = [{scheme_defaults, [{postgres, 5432}, {postgresql, 5432}]}],
     case http_uri:parse(URL, ParseOpts) of
         {error, Error} ->

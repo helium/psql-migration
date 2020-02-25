@@ -97,7 +97,7 @@ handle_command({ok, {Args, ["reset"]}}) ->
         {Database, Opts1} ->
             case with_connection(Opts1#{database => "postgres"},
                                  fun(Conn) ->
-                                         if_ok(epgsql:equery(Conn, "drop database if exists '$1" ++ Database ++ "'"))
+                                         if_ok(epgsql:equery(Conn, "drop database if exists '" ++ Database ++ "'"))
                                  end) of
                 ok ->
                     handle_command({ok, {Args, ["setup"]}});

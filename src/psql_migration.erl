@@ -97,7 +97,7 @@ handle_command({ok, {Args, ["reset"]}}) ->
         {Database, Opts1} ->
             case with_connection(Opts1#{database => "postgres"},
                                  fun(Conn) ->
-                                         if_ok(epgsql:equery(Conn, "drop database if exists '" ++ Database ++ "'"))
+                                         if_ok(epgsql:equery(Conn, "drop database if exists \"" ++ Database ++ "\""))
                                  end) of
                 ok ->
                     handle_command({ok, {Args, ["setup"]}});
@@ -113,7 +113,7 @@ handle_command({ok, {Args, ["setup"]}}) ->
         {Database, Opts1} ->
             case with_connection(Opts1#{database => "postgres"},
                                  fun(Conn) ->
-                                         if_ok(epgsql:squery(Conn, "create database '" ++ Database ++ "'"))
+                                         if_ok(epgsql:squery(Conn, "create database \"" ++ Database ++ "\""))
                                  end) of
                 ok ->
                     handle_command({ok, {Args, ["run"]}});

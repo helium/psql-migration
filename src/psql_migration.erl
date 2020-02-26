@@ -109,11 +109,11 @@ handle_command({ok, {Args, ["setup"]}}) ->
     {ok, Opts} = connection_opts(Args),
     case maps:take(database, Opts) of
         error ->
-            handle_command_result({error, "No database to reset~n"});
+            handle_command_result({error, "No database to set up~n"});
         {Database, Opts1} ->
             case with_connection(Opts1#{database => "postgres"},
                                  fun(Conn) ->
-                                         if_ok(epgsql:squery(Conn, "create database \"" ++ Database ++ "\""))
+                                         if_ok(epgsql:squery(Conn, "create database if not exists \"" ++ Database ++ "\""))
                                  end) of
                 ok ->
                     handle_command({ok, {Args, ["run"]}});

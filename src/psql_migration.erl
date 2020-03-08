@@ -237,14 +237,11 @@ apply_migrations(Type, Migrations, Conn) ->
 
 apply_migration(Type, {Version, Migration}, Conn) ->
     Query = eql:get_query(Type, Migration),
-    ?DRIVER:squery(Conn, "BEGIN;"),
     case if_ok(?DRIVER:squery(Conn, Query)) of
         ok ->
             record_migration(Type, Conn, Version),
-            ?DRIVER:squery(Conn, "COMMIT;"),
             ok;
         {error, Error} ->
-            ?DRIVER:squery(Conn, "ROLLBACK;"),
             {error, Error}
     end.
 

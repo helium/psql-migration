@@ -162,29 +162,35 @@ with_connection(Args, Fun) ->
     end.
 
 connection_opts(Args) ->
-    connection_opts(Args, "DATABASE_URL").
+    connection_opts(Args, {env, "DATABASE_URL"}).
 
-connection_opts(Args, URLName) ->
-    envloader:load(dot_env(Args)),
-    URL = os:getenv(URLName),
+connection_opts(Args, {env, URLName}) ->
+    maybe_load_dot_env(dot_env(Args)),
+    case os:getenv(URLName) of
+        false -> {error, "Missing DATABASE_URL.~n"};
+        DatabaseUrl -> connection_opts(Args, {url, DatabaseUrl})
+    end;
+
+connection_opts(_Args, {url, DatabaseUrl}) ->
     ParseOpts = [{scheme_defaults, [{postgres, 5432}, {postgresql, 5432}]}],
-    case http_uri:parse(URL, ParseOpts) of
+    case http_uri:parse(DatabaseUrl, ParseOpts) of
         {error, Error} ->
             {error, Error};
         {ok, {_, UserPass, Host, Port, Database, _}} ->
             {User, Pass} = case string:split(UserPass, ":") of
-                               [[]] -> {"postgres", ""};
-                               [U] -> {U, ""};
-                               [[], []] -> {"postgres", ""};
-                               [U, P] ->  {U, P}
-                           end,
-            {ok, #{ port => Port,
-                    username => User,
-                    password => Pass,
-                    host =>Host,
-                    database => string:slice(Database, 1)}}
-    end.
+                [[]] -> {"postgres", ""};
+                [U] -> {U, ""};
+                [[], []] -> {"postgres", ""};
+                [U, P] ->  {U, P}
+            end,
 
+            {ok, #{
+                port => Port,
+                username => User,
+                password => Pass,
+                host => Host,
+                database => string:slice(Database, 1)}}
+    end.
 
 -spec open_connection(list() | map()) -> {ok, epgsql:connection()} | {error, term()}.
 open_connection(Args) when is_list(Args) ->
@@ -199,6 +205,12 @@ target_dir(Args) ->
         {dir, Dir} ->
             filelib:ensure_dir(Dir),
             Dir
+    end.
+
+maybe_load_dot_env(DotEnv) ->
+    case filelib:is_file(DotEnv) of
+        true -> envloader:load(DotEnv);
+        false -> ok % NB: Ignore the missing file.
     end.
 
 dot_env(Args) ->

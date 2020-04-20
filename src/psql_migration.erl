@@ -198,8 +198,9 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
                         [] -> {ok, ConnectionOpts};
                         QueryList ->
                             case proplists:get_value("ssl", QueryList) of
-                                "true" -> {ok, maps:put(ssl, true, ConnectionOpts)};
-                                _ -> {ok, ConnectionOpts}
+                                undefined -> {ok, ConnectionOpts};
+                                [] -> {ok, maps:put(ssl, true, ConnectionOpts)};
+                                Value -> {ok, maps:put(ssl, list_to_atom(Value), ConnectionOpts)}
                             end
                     end
             end

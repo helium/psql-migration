@@ -176,7 +176,7 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
     case http_uri:parse(DatabaseUrl, ParseOpts) of
         {error, Error} ->
             {error, Error};
-        {ok, {_, UserPass, Host, Port, Database, _}} ->
+        {ok, {_, UserPass, Host, Port, Database, Query}} ->
             {User, Pass} = case string:split(UserPass, ":") of
                 [[]] -> {"postgres", ""};
                 [U] -> {U, ""};
@@ -184,12 +184,25 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
                 [U, P] ->  {U, P}
             end,
 
-            {ok, #{
+            ConnectionOpts = #{
                 port => Port,
                 username => User,
                 password => Pass,
                 host => Host,
-                database => string:slice(Database, 1)}}
+                database => string:slice(Database, 1)},
+
+            case Query of
+                [] -> {ok, ConnectionOpts};
+                "?" ++ QueryString ->
+                    case uri_string:dissect_query(QueryString) of
+                        [] -> {ok, ConnectionOpts};
+                        QueryList ->
+                            case proplists:get_value("ssl", QueryList) of
+                                "true" -> {ok, maps:put(ssl, true, ConnectionOpts)};
+                                _ -> {ok, ConnectionOpts}
+                            end
+                    end
+            end
     end.
 
 -spec open_connection(list() | map()) -> {ok, epgsql:connection()} | {error, term()}.

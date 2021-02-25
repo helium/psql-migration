@@ -196,7 +196,7 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
     case uri_string:parse(DatabaseUrl) of
         {error, Error, Term} ->
             {error, {Error, Term}};
-        Map = #{userinfo := UserPass, host := Host, path := Path, query := Query} ->
+        Map = #{userinfo := UserPass, host := Host, path := Path} ->
             {User, Pass} =
                 case string:split(UserPass, ":") of
                     [[]] -> {"postgres", ""};
@@ -213,7 +213,7 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
                 database => string:slice(Path, 1)
             },
 
-            case Query of
+            case maps:get(query, Map, []) of
                 [] ->
                     {ok, ConnectionOpts};
                 "?" ++ QueryString ->

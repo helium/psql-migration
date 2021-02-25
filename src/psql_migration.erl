@@ -196,7 +196,7 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
     case uri_string:parse(DatabaseUrl) of
         {error, Error, Term} ->
             {error, {Error, Term}};
-        #{userinfo := UserPass, port := Port, host := Host, path := Path, query := Query} ->
+        Map = #{userinfo := UserPass, host := Host, path := Path, query := Query} ->
             {User, Pass} =
                 case string:split(UserPass, ":") of
                     [[]] -> {"postgres", ""};
@@ -206,11 +206,7 @@ connection_opts(_Args, {url, DatabaseUrl}) ->
                 end,
 
             ConnectionOpts = #{
-                port =>
-                    case Port of
-                        undefined -> 5432;
-                        _ -> Port
-                    end,
+                port => maps:get(port, Map, 5432),
                 username => User,
                 password => Pass,
                 host => Host,

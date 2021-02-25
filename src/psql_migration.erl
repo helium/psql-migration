@@ -293,13 +293,18 @@ apply_migrations(Type, Migrations, Conn) ->
     lists:reverse(Results).
 
 apply_migration(Type, {Version, Migration}, Conn) ->
-    {ok, Query} = eql:get_query(Type, Migration),
-    case if_ok(?DRIVER:squery(Conn, Query)) of
-        ok ->
+    case eql:get_query(Type, Migration) of
+        {ok, Query} ->
+            case if_ok(?DRIVER:squery(Conn, Query)) of
+                ok ->
+                    record_migration(Type, Conn, Version),
+                    ok;
+                {error, Error} ->
+                    {error, Error}
+            end;
+        undefined ->
             record_migration(Type, Conn, Version),
-            ok;
-        {error, Error} ->
-            {error, Error}
+            ok
     end.
 
 if_ok(Rs) when is_list(Rs) ->

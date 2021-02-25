@@ -7,28 +7,32 @@
 %% API functions
 %%====================================================================
 
--define(OPTS,
-        [
-         {help, $h, "help", undefined, "Print this help text"},
-         {dir, $d, "dir", {string, "migrations"}, "Migration folder"},
-         {env, $e, "env", {string, ".env"}, "Environment file to search for DATABASE_URL"}
-        ]).
+-define(OPTS, [
+    {help, $h, "help", undefined, "Print this help text"},
+    {dir, $d, "dir", {string, "migrations"}, "Migration folder"},
+    {env, $e, "env", {string, ".env"}, "Environment file to search for DATABASE_URL"}
+]).
 
 %% escript Entry point
 main(Args) ->
     handle_command(getopt:parse(?OPTS, Args)).
 
 usage(ExitCode) ->
-    getopt:usage(?OPTS, "psql_migration",
-                 "<command>",
-                 [
-                  {"new <name>", "Create a new migration"},
-                  {"list", "List migrations indicating which have been applied"},
-                  {"run", "Run all migrations"},
-                  {"revert", "Revert the last migration"},
-                  {"reset", "Resets your database by dropping the database in your DATABASE_URL and then runs `setup`"},
-                  {"setup", "Creates the database specified in your DATABASE_URL, and runs any existing migrations."}
-                  ]),
+    getopt:usage(
+        ?OPTS,
+        "psql_migration",
+        "<command>",
+        [
+            {"new <name>", "Create a new migration"},
+            {"list", "List migrations indicating which have been applied"},
+            {"run", "Run all migrations"},
+            {"revert", "Revert the last migration"},
+            {"reset",
+                "Resets your database by dropping the database in your DATABASE_URL and then runs `setup`"},
+            {"setup",
+                "Creates the database specified in your DATABASE_URL, and runs any existing migrations."}
+        ]
+    ),
     halt(ExitCode).
 
 handle_command({error, Error}) ->
@@ -40,11 +44,11 @@ handle_command({ok, {Args, ["list"]}}) ->
     Applied = applied_migrations(Args),
     Available = available_migrations(Args),
     IsApplied = fun(Mig) ->
-                        case lists:member(Mig, Applied) of
-                            true -> "X";
-                            _ -> " "
-                        end
-                end,
+        case lists:member(Mig, Applied) of
+            true -> "X";
+            _ -> " "
+        end
+    end,
     io:format("Migrations:~n"),
     [io:format(" [~s] ~s~n", [IsApplied(Entry), Entry]) || {Entry, _} <- Available];
 handle_command({ok, {Args, ["new", Name]}}) ->
@@ -52,42 +56,49 @@ handle_command({ok, {Args, ["new", Name]}}) ->
     Timestamp = erlang:system_time(seconds),
     MigrationName = [integer_to_list(Timestamp), "-", Name, ".sql"],
     Filename = filename:join(Dir, MigrationName),
-    C = ["-- ", Filename, "\n",
-         "-- :up\n",
-         "-- Up migration\n\n",
-         "-- :down\n",
-         "-- Down migration\n"
-        ],
+    C = [
+        "-- ",
+        Filename,
+        "\n",
+        "-- :up\n",
+        "-- Up migration\n\n",
+        "-- :down\n",
+        "-- Down migration\n"
+    ],
     file:write_file(Filename, list_to_binary(C), [exclusive]),
     handle_command_result({ok, "Created migration: ~s~n", [Filename]});
 handle_command({ok, {Args, ["run"]}}) ->
     Available = available_migrations(Args),
-    Result = with_connection(Args,
-                             fun(Conn) ->
-                                     Applied = applied_migrations(Conn),
-                                     ToApply = lists:filter(fun ({Mig, _}) -> not lists:member(Mig, Applied) end, Available),
-                                     Results = apply_migrations(up, ToApply, Conn),
-                                     report_migrations(up, Results)
-                             end),
+    Result = with_connection(
+        Args,
+        fun(Conn) ->
+            Applied = applied_migrations(Conn),
+            ToApply = lists:filter(fun({Mig, _}) -> not lists:member(Mig, Applied) end, Available),
+            Results = apply_migrations(up, ToApply, Conn),
+            report_migrations(up, Results)
+        end
+    ),
     handle_command_result(Result);
 handle_command({ok, {Args, ["revert"]}}) ->
     Available = available_migrations(Args),
-    Result = with_connection(Args,
-                             fun(Conn) ->
-                                     case applied_migrations(Conn) of
-                                         [] ->
-                                             {error, "No applied migrations to revert"};
-                                         Applied ->
-                                             LastApplied = lists:last(Applied),
-                                             case lists:keyfind(LastApplied, 1, Available) of
-                                                 false ->
-                                                     {error, "Migration ~p can not be found~n", [LastApplied]};
-                                                 Migration ->
-                                                     Results = apply_migrations(down, [Migration], Conn),
-                                                     report_migrations(down, Results)
-                                             end
-                                     end
-                             end),
+    Result = with_connection(
+        Args,
+        fun(Conn) ->
+            case applied_migrations(Conn) of
+                [] ->
+                    {error, "No applied migrations to revert"};
+                Applied ->
+                    LastApplied = lists:last(Applied),
+                    case lists:keyfind(LastApplied, 1, Available) of
+                        false ->
+                            {error, "Migration ~p can not be found~n", [LastApplied]};
+                        Migration ->
+                            Results = apply_migrations(down, [Migration], Conn),
+                            report_migrations(down, Results)
+                    end
+            end
+        end
+    ),
     handle_command_result(Result);
 handle_command({ok, {Args, ["reset"]}}) ->
     {ok, Opts} = connection_opts(Args),
@@ -95,10 +106,14 @@ handle_command({ok, {Args, ["reset"]}}) ->
         error ->
             handle_command_result({error, "No database to reset~n"});
         {Database, Opts1} ->
-            case with_connection(Opts1#{database => "postgres"},
-                                 fun(Conn) ->
-                                         if_ok(epgsql:equery(Conn, "drop database if exists " ++ Database))
-                                 end) of
+            case
+                with_connection(
+                    Opts1#{database => "postgres"},
+                    fun(Conn) ->
+                        if_ok(epgsql:equery(Conn, "drop database if exists " ++ Database))
+                    end
+                )
+            of
                 ok ->
                     handle_command({ok, {Args, ["setup"]}});
                 Other ->
@@ -111,15 +126,24 @@ handle_command({ok, {Args, ["setup"]}}) ->
         error ->
             handle_command_result({error, "No database to set up~n"});
         {Database, Opts1} ->
-            case with_connection(Opts1#{database => "postgres"},
-                                 fun(Conn) ->
-                                         case epgsql:squery(Conn, "select 1 from pg_database where datname = '" ++ Database ++ "'") of
-                                             {ok, _, []} ->
-                                                 if_ok(epgsql:squery(Conn, "create database " ++ Database));
-                                             Other ->
-                                                 if_ok(Other)
-                                         end
-                                 end) of
+            case
+                with_connection(
+                    Opts1#{database => "postgres"},
+                    fun(Conn) ->
+                        case
+                            epgsql:squery(
+                                Conn,
+                                "select 1 from pg_database where datname = '" ++ Database ++ "'"
+                            )
+                        of
+                            {ok, _, []} ->
+                                if_ok(epgsql:squery(Conn, "create database " ++ Database));
+                            Other ->
+                                if_ok(Other)
+                        end
+                    end
+                )
+            of
                 ok ->
                     handle_command({ok, {Args, ["run"]}});
                 Other ->
@@ -129,15 +153,13 @@ handle_command({ok, {Args, ["setup"]}}) ->
 handle_command({ok, {_, _}}) ->
     usage(1).
 
-
-
 %% Utils
 
-
--type command_result() ::ok |
-                         {ok, io:format(), [term()]} |
-                         {error, string()} |
-                         {error, io:format(), [term()]}.
+-type command_result() ::
+    ok
+    | {ok, io:format(), [term()]}
+    | {error, string()}
+    | {error, io:format(), [term()]}.
 
 -spec handle_command_result(command_result()) -> no_return().
 handle_command_result(ok) ->
@@ -151,8 +173,8 @@ handle_command_result({error, Fmt, Args}) ->
     io:format(Fmt, Args),
     halt(1).
 
-
--spec with_connection(list() | map(), fun((epgsql:connnection()) -> command_result())) -> command_result().
+-spec with_connection(list() | map(), fun((epgsql:connnection()) -> command_result())) ->
+    command_result().
 with_connection(Args, Fun) ->
     case open_connection(Args) of
         {ok, Conn} ->
@@ -170,32 +192,38 @@ connection_opts(Args, {env, URLName}) ->
         false -> {error, "Missing DATABASE_URL.~n"};
         DatabaseUrl -> connection_opts(Args, {url, DatabaseUrl})
     end;
-
 connection_opts(_Args, {url, DatabaseUrl}) ->
-    ParseOpts = [{scheme_defaults, [{postgres, 5432}, {postgresql, 5432}]}],
-    case http_uri:parse(DatabaseUrl, ParseOpts) of
-        {error, Error} ->
-            {error, Error};
-        {ok, {_, UserPass, Host, Port, Database, Query}} ->
-            {User, Pass} = case string:split(UserPass, ":") of
-                [[]] -> {"postgres", ""};
-                [U] -> {U, ""};
-                [[], []] -> {"postgres", ""};
-                [U, P] ->  {U, P}
-            end,
+    case uri_string:parse(DatabaseUrl) of
+        {error, Error, Term} ->
+            {error, {Error, Term}};
+        #{userinfo := UserPass, port := Port, host := Host, path := Path, query := Query} ->
+            {User, Pass} =
+                case string:split(UserPass, ":") of
+                    [[]] -> {"postgres", ""};
+                    [U] -> {U, ""};
+                    [[], []] -> {"postgres", ""};
+                    [U, P] -> {U, P}
+                end,
 
             ConnectionOpts = #{
-                port => Port,
+                port =>
+                    case Port of
+                        undefined -> 5432;
+                        _ -> Port
+                    end,
                 username => User,
                 password => Pass,
                 host => Host,
-                database => string:slice(Database, 1)},
+                database => string:slice(Path, 1)
+            },
 
             case Query of
-                [] -> {ok, ConnectionOpts};
+                [] ->
+                    {ok, ConnectionOpts};
                 "?" ++ QueryString ->
                     case uri_string:dissect_query(QueryString) of
-                        [] -> {ok, ConnectionOpts};
+                        [] ->
+                            {ok, ConnectionOpts};
                         QueryList ->
                             case proplists:get_value("ssl", QueryList) of
                                 undefined -> {ok, ConnectionOpts};
@@ -215,7 +243,8 @@ open_connection(Opts) ->
 
 target_dir(Args) ->
     case lists:keyfind(dir, 1, Args) of
-        false -> ".";
+        false ->
+            ".";
         {dir, Dir} ->
             filelib:ensure_dir(Dir),
             Dir
@@ -224,7 +253,8 @@ target_dir(Args) ->
 maybe_load_dot_env(DotEnv) ->
     case filelib:is_file(DotEnv) of
         true -> envloader:load(DotEnv);
-        false -> ok % NB: Ignore the missing file.
+        % NB: Ignore the missing file.
+        false -> ok
     end.
 
 dot_env(Args) ->
@@ -233,7 +263,7 @@ dot_env(Args) ->
         {env, DotEnv} -> DotEnv
     end.
 
--spec report_migrations(up | down, [{Version::string(), ok | {error, term()}}]) -> ok.
+-spec report_migrations(up | down, [{Version :: string(), ok | {error, term()}}]) -> ok.
 report_migrations(_, L) when length(L) == 0 ->
     io:format("No migrations were run~n");
 report_migrations(up, Results) ->
@@ -251,18 +281,23 @@ record_migration(down, Conn, V) ->
     ?DRIVER:equery(Conn, "DELETE FROM __migrations WHERE id = $1", [V]).
 
 apply_migrations(Type, Migrations, Conn) ->
-    Results = lists:foldl(fun(_, [{_, {error, _}} | _]=Acc) ->
-                                  Acc;
-                             (Migration={Version, _}, Acc) ->
-                                  case apply_migration(Type, Migration, Conn) of
-                                      ok -> [{Version, ok} | Acc];
-                                      {error, Error} -> [{Version, {error, Error}}]
-                                  end
-                          end, [], Migrations),
+    Results = lists:foldl(
+        fun
+            (_, [{_, {error, _}} | _] = Acc) ->
+                Acc;
+            (Migration = {Version, _}, Acc) ->
+                case apply_migration(Type, Migration, Conn) of
+                    ok -> [{Version, ok} | Acc];
+                    {error, Error} -> [{Version, {error, Error}}]
+                end
+        end,
+        [],
+        Migrations
+    ),
     lists:reverse(Results).
 
 apply_migration(Type, {Version, Migration}, Conn) ->
-    Query = eql:get_query(Type, Migration),
+    {ok, Query} = eql:get_query(Type, Migration),
     case if_ok(?DRIVER:squery(Conn, Query)) of
         ok ->
             record_migration(Type, Conn, Version),
@@ -277,33 +312,46 @@ if_ok(Rs) when is_list(Rs) ->
         false -> ok;
         Error -> Error
     end;
-if_ok({ok, _}) -> ok;
-if_ok({ok, _, _}) -> ok;
-if_ok({ok, _, _, _}) -> ok;
-if_ok({error, {error,error,_,_,Descr,_}}) -> {error, binary_to_list(Descr)};
-if_ok(Error) -> {error, Error}.
+if_ok({ok, _}) ->
+    ok;
+if_ok({ok, _, _}) ->
+    ok;
+if_ok({ok, _, _, _}) ->
+    ok;
+if_ok({error, {error, error, _, _, Descr, _}}) ->
+    {error, binary_to_list(Descr)};
+if_ok(Error) ->
+    {error, Error}.
 
 available_migrations(Args) ->
     Dir = target_dir(Args),
     Files = filelib:wildcard(filename:join(Dir, "*.sql")),
-    lists:map(fun(Filename) ->
-                      {ok, Migs} = eql:compile(Filename),
-                      {filename:rootname(Filename), Migs}
-              end, lists:usort(Files)).
+    lists:map(
+        fun(Filename) ->
+            {ok, Migs} = eql:compile(Filename),
+            {filename:rootname(Filename), Migs}
+        end,
+        lists:usort(Files)
+    ).
 
 applied_migrations(Args) when is_list(Args) ->
-    with_connection(Args,
-                    fun(Conn) ->
-                            applied_migrations(Conn)
-                    end);
+    with_connection(
+        Args,
+        fun(Conn) ->
+            applied_migrations(Conn)
+        end
+    );
 applied_migrations(Conn) when is_pid(Conn) ->
     case ?DRIVER:squery(Conn, "SELECT id FROM __migrations ORDER by id ASC") of
-        {ok, _, Migs} -> [binary_to_list(Mig) || {Mig} <- Migs];
+        {ok, _, Migs} ->
+            [binary_to_list(Mig) || {Mig} <- Migs];
         {error, {error, error, <<"42P01">>, _, _, _}} ->
             %% init migrations and restart
-            {ok, _, _} = ?DRIVER:squery(Conn,
-                                        "CREATE TABLE __migrations ("
-                                        "id VARCHAR(255) PRIMARY KEY,"
-                                        "datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"),
+            {ok, _, _} = ?DRIVER:squery(
+                Conn,
+                "CREATE TABLE __migrations ("
+                "id VARCHAR(255) PRIMARY KEY,"
+                "datetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            ),
             applied_migrations(Conn)
     end.

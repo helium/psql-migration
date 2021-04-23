@@ -1,7 +1,7 @@
 psql_migration
 =====
 
-[![Build status](https://badge.buildkite.com/2a17b5561e84e0ad2ce19cac2d079d5ab8c59d647389de3287.svg)](https://buildkite.com/helium/psql-migration)
+[![CI](https://github.com/helium/psql-migration/actions/workflows/ci.yml/badge.svg)](https://github.com/helium/psql-migration/actions/workflows/ci.yml)
 
 An escript to help with Postgres migrations.
 

@@ -17,5 +17,6 @@ _build
 *.iml
 rebar3.crashdump
 .DS_Store
-*.env
+.env*
+!.env.template
 .tool-versions

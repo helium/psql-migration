@@ -193,7 +193,7 @@ connection_opts(Args, {env, URLName}) ->
         DatabaseUrl -> connection_opts(Args, {url, DatabaseUrl})
     end;
 connection_opts(_Args, {url, DatabaseUrl}) ->
-    case uri_string:parse(DatabaseUrl) of
+    case uri_string:parse(string:trim(DatabaseUrl)) of
         {error, Error, Term} ->
             {error, {Error, Term}};
         Map = #{userinfo := UserPass, host := Host, path := Path} ->

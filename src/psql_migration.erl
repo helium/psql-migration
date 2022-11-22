@@ -65,8 +65,12 @@ handle_command({ok, {Args, ["new", Name]}}) ->
         "-- :down\n",
         "-- Down migration\n"
     ],
-    file:write_file(Filename, list_to_binary(C), [exclusive]),
-    handle_command_result({ok, "Created migration: ~s~n", [Filename]});
+    Result = case file:write_file(Filename, list_to_binary(C), [exclusive]) of
+                 ok -> {ok, "Created migration: ~s~n", [Filename]};
+                 {error, Reason} ->  {error,
+                                      "Migration can not be written to file ~s: ~s~n", [Filename, Reason]}
+             end,
+    handle_command_result(Result);
 handle_command({ok, {Args, ["run"]}}) ->
     Available = available_migrations(Args),
     Result = with_connection(
